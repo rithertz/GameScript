@@ -135,3 +135,80 @@ GS_TEST(LexerTests, LexicalErrorHandling) {
     GS_ASSERT(diag.hasErrors());
     GS_ASSERT_EQ(diag.getErrorCount(), 2);
 }
+
+GS_TEST(LexerTests, AllLanguageKeywords) {
+    std::string source =
+        "set player move turn attack defend jump interact retreat "
+        "if else repeat while function call when not and or true false "
+        "forward backward left right enemy nearby health low obstacle ahead\n";
+
+    Lexer lexer(source, "keywords.gs");
+    auto tokens = lexer.tokenize();
+
+    GS_ASSERT_EQ(tokens[0].type, TokenType::Set);
+    GS_ASSERT_EQ(tokens[1].type, TokenType::Player);
+    GS_ASSERT_EQ(tokens[2].type, TokenType::Move);
+    GS_ASSERT_EQ(tokens[3].type, TokenType::Turn);
+    GS_ASSERT_EQ(tokens[4].type, TokenType::Attack);
+    GS_ASSERT_EQ(tokens[5].type, TokenType::Defend);
+    GS_ASSERT_EQ(tokens[6].type, TokenType::Jump);
+    GS_ASSERT_EQ(tokens[7].type, TokenType::Interact);
+    GS_ASSERT_EQ(tokens[8].type, TokenType::Retreat);
+    GS_ASSERT_EQ(tokens[9].type, TokenType::If);
+    GS_ASSERT_EQ(tokens[10].type, TokenType::Else);
+    GS_ASSERT_EQ(tokens[11].type, TokenType::Repeat);
+    GS_ASSERT_EQ(tokens[12].type, TokenType::While);
+    GS_ASSERT_EQ(tokens[13].type, TokenType::Function);
+    GS_ASSERT_EQ(tokens[14].type, TokenType::Call);
+    GS_ASSERT_EQ(tokens[15].type, TokenType::When);
+    GS_ASSERT_EQ(tokens[16].type, TokenType::Not);
+    GS_ASSERT_EQ(tokens[17].type, TokenType::And);
+    GS_ASSERT_EQ(tokens[18].type, TokenType::Or);
+    GS_ASSERT_EQ(tokens[19].type, TokenType::True);
+    GS_ASSERT_EQ(tokens[20].type, TokenType::False);
+    GS_ASSERT_EQ(tokens[21].type, TokenType::Forward);
+    GS_ASSERT_EQ(tokens[22].type, TokenType::Backward);
+    GS_ASSERT_EQ(tokens[23].type, TokenType::Left);
+    GS_ASSERT_EQ(tokens[24].type, TokenType::Right);
+    GS_ASSERT_EQ(tokens[25].type, TokenType::Enemy);
+    GS_ASSERT_EQ(tokens[26].type, TokenType::Nearby);
+    GS_ASSERT_EQ(tokens[27].type, TokenType::Health);
+    GS_ASSERT_EQ(tokens[28].type, TokenType::Low);
+    GS_ASSERT_EQ(tokens[29].type, TokenType::Obstacle);
+    GS_ASSERT_EQ(tokens[30].type, TokenType::Ahead);
+    GS_ASSERT_EQ(tokens.back().type, TokenType::EndOfFile);
+}
+
+GS_TEST(LexerTests, StringAndBooleanLiterals) {
+    std::string source =
+        "set message = \"hello world\"\n"
+        "set newline = \"line1\\nline2\"\n"
+        "set enabled = true\n"
+        "set disabled = false\n";
+
+    Lexer lexer(source, "literals.gs");
+    auto tokens = lexer.tokenize();
+
+    GS_ASSERT_EQ(tokens[3].type, TokenType::StringLiteral);
+    GS_ASSERT_EQ(tokens[3].lexeme, "hello world");
+
+    GS_ASSERT_EQ(tokens[8].type, TokenType::StringLiteral);
+    GS_ASSERT_EQ(tokens[8].lexeme, "line1\nline2");
+
+    GS_ASSERT_EQ(tokens[13].type, TokenType::True);
+    GS_ASSERT_EQ(tokens[18].type, TokenType::False);
+}
+
+GS_TEST(LexerTests, InconsistentIndentation) {
+    std::string source =
+        "if enemy nearby:\n"
+        "    player attack\n"
+        "  player move forward 1\n";
+
+    DiagnosticEngine diag(source, "bad_indent.gs");
+    Lexer lexer(source, "bad_indent.gs", &diag);
+    auto tokens = lexer.tokenize();
+
+    GS_ASSERT(diag.hasErrors());
+    GS_ASSERT(diag.getErrorCount() >= 1);
+}
