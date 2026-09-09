@@ -76,3 +76,184 @@ GS_TEST(SemanticTests, DetectInvalidFunctionCall) {
     GS_ASSERT(!ok);
     GS_ASSERT(diag.hasErrors());
 }
+
+GS_TEST(SemanticTests, RejectNonIntegerMovementDistance) {
+    std::string source =
+        "set distance = true\n"
+        "player move forward distance\n";
+
+    DiagnosticEngine diag(source, "bad_move_type.gs");
+    Lexer lexer(source, "bad_move_type.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectNonBooleanCondition) {
+    std::string source =
+        "set value = 10\n"
+        "if value:\n"
+        "    player attack\n";
+
+    DiagnosticEngine diag(source, "bad_condition.gs");
+    Lexer lexer(source, "bad_condition.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectInvalidArithmeticTypes) {
+    std::string source =
+        "set enabled = true\n"
+        "set result = enabled + 5\n";
+
+    DiagnosticEngine diag(source, "bad_arithmetic.gs");
+    Lexer lexer(source, "bad_arithmetic.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, AcceptFunctionCallWithCorrectArgumentCount) {
+    std::string source =
+        "function patrol(distance, angle):\n"
+        "    player move forward distance\n"
+        "    player turn right angle\n"
+        "call patrol(5, 90)\n";
+
+    DiagnosticEngine diag(source, "valid_function.gs");
+    Lexer lexer(source, "valid_function.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, DetectUndefinedFunction) {
+    std::string source =
+        "call missing_function\n";
+
+    DiagnosticEngine diag(source, "missing_function.gs");
+    Lexer lexer(source, "missing_function.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, DetectDuplicateFunctionDeclaration) {
+    std::string source =
+        "function patrol:\n"
+        "    player move forward 1\n"
+        "function patrol:\n"
+        "    player attack\n";
+
+    DiagnosticEngine diag(source, "duplicate_function.gs");
+    Lexer lexer(source, "duplicate_function.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, DetectFunctionCallBeforeDeclaration) {
+    std::string source =
+        "call patrol\n"
+        "function patrol:\n"
+        "    player attack\n";
+
+    DiagnosticEngine diag(source, "forward_function.gs");
+    Lexer lexer(source, "forward_function.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    /*
+     * The current semantic analyzer performs declaration/use
+     * checking in source order, so a function must be declared
+     * before it is called.
+     */
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, AcceptBooleanLogic) {
+    std::string source =
+        "if enemy nearby and not health low:\n"
+        "    player attack\n";
+
+    DiagnosticEngine diag(source, "boolean_logic.gs");
+    Lexer lexer(source, "boolean_logic.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectInvalidComparisonTypes) {
+    std::string source =
+        "set enabled = true\n"
+        "set result = enabled < 5\n";
+
+    DiagnosticEngine diag(source, "bad_comparison.gs");
+    Lexer lexer(source, "bad_comparison.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, AllowNestedScopeVariableAccess) {
+    std::string source =
+        "set speed = 5\n"
+        "if enemy nearby:\n"
+        "    player move forward speed\n";
+
+    DiagnosticEngine diag(source, "nested_scope.gs");
+    Lexer lexer(source, "nested_scope.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
