@@ -1,5 +1,12 @@
 #pragma once
 
+//==============================================================================
+// PassManager.hpp
+//
+// Defines the optimization pass interface and pass manager used to execute
+// optimization passes over the GameScript intermediate representation.
+//==============================================================================
+
 #include "gamescript/ir/IRModule.hpp"
 #include <string>
 #include <vector>
@@ -7,6 +14,7 @@
 
 namespace gamescript::optimizer {
 
+// Base interface for an optimization pass.
 class Pass {
 public:
     virtual ~Pass() = default;
@@ -14,12 +22,16 @@ public:
     virtual bool runOnModule(ir::IRModule& module) = 0;
 };
 
+// Manages and executes a sequence of optimization passes.
 class PassManager {
 public:
+    // Adds an optimization pass to the pipeline.
     void addPass(std::unique_ptr<Pass> pass) {
         passes_.push_back(std::move(pass));
     }
 
+    // Runs the optimization passes until no further changes are made or the
+    // maximum number of iterations is reached.
     bool run(ir::IRModule& module, int maxIterations = 5) {
         bool anyChanged = false;
         for (int iter = 0; iter < maxIterations; ++iter) {
@@ -35,6 +47,7 @@ public:
         return anyChanged;
     }
 
+    // Creates the default optimization pass pipeline.
     static std::unique_ptr<PassManager> createDefaultPipeline();
 
 private:

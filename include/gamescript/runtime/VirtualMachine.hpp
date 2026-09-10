@@ -1,5 +1,12 @@
 #pragma once
 
+//==============================================================================
+// VirtualMachine.hpp
+//
+// Defines the runtime virtual machine responsible for executing the
+// GameScript intermediate representation within a game world.
+//==============================================================================
+
 #include "gamescript/ir/IRModule.hpp"
 #include "gamescript/runtime/GameWorld.hpp"
 #include <unordered_map>
@@ -8,6 +15,7 @@
 
 namespace gamescript::runtime {
 
+// Represents a value stored and manipulated by the virtual machine.
 struct VMValue {
     enum class Type { Integer, Boolean, None } type = Type::None;
     int64_t intVal = 0;
@@ -38,16 +46,21 @@ struct VMValue {
     }
 };
 
+// Executes IR instructions against a runtime game world.
 class VirtualMachine {
 public:
     explicit VirtualMachine(GameWorld& world);
 
+    // Executes the specified IR module starting from the entry function.
     bool execute(const ir::IRModule& module, const std::string& entryFunction = "main");
 
     const std::unordered_map<std::string, VMValue>& getVariables() const { return variables_; }
 
 private:
+    // Resolves an IR operand to a runtime value.
     VMValue resolveOperand(const ir::Operand& op);
+
+    // Stores a runtime value under the specified variable name.
     void storeValue(const std::string& name, VMValue val);
 
     GameWorld& world_;

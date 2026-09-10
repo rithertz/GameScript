@@ -1,5 +1,12 @@
 #pragma once
 
+//==============================================================================
+// Parser.hpp
+//
+// Defines the parser used by the GameScript compiler to convert a sequence
+// of tokens produced by the lexer into an Abstract Syntax Tree (AST).
+//==============================================================================
+
 #include "gamescript/lexer/Token.hpp"
 #include "gamescript/lexer/Lexer.hpp"
 #include "gamescript/ast/ASTNode.hpp"
@@ -12,11 +19,15 @@
 
 namespace gamescript {
 
+// Parses GameScript tokens and builds the corresponding Abstract Syntax Tree.
 class Parser {
 public:
     explicit Parser(std::vector<Token> tokens, DiagnosticEngine* diagnostics = nullptr);
 
+    // Parses the complete token sequence into a program AST.
     std::unique_ptr<Program> parseProgram();
+
+    // Check if parser encountered errors.
     bool hasErrors() const { return diagnostics_ ? diagnostics_->hasErrors() : hasInternalErrors_; }
 
 private:
