@@ -93,3 +93,135 @@ GS_TEST(IROptimizerTests, RedundantMovementElimination) {
     std::string irDump = module->toString();
     GS_ASSERT(irDump.find("player move FORWARD") != std::string::npos);
 }
+
+GS_TEST(IROptimizerTests, IfElseIRGeneration) {
+    std::string source =
+        "if health low:\n"
+        "    player defend\n"
+        "else:\n"
+        "    player attack\n";
+
+    Lexer lexer(source, "if_else.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
+    GS_ASSERT(irDump.find("GAME_ACTION") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, RepeatLoopIRGeneration) {
+    std::string source =
+        "repeat 3:\n"
+        "    player move forward 1\n";
+
+    Lexer lexer(source, "repeat.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("BR") != std::string::npos);
+    GS_ASSERT(irDump.find("GAME_MOVE") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, WhileLoopIRGeneration) {
+    std::string source =
+        "set count = 3\n"
+        "while count > 0:\n"
+        "    player move forward 1\n";
+
+    Lexer lexer(source, "while.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
+    GS_ASSERT(irDump.find("GAME_MOVE") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, BooleanExpressionIRGeneration) {
+    std::string source =
+        "if enemy nearby and not health low:\n"
+        "    player attack\n";
+
+    Lexer lexer(source, "boolean.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("AND") != std::string::npos);
+    GS_ASSERT(irDump.find("NOT") != std::string::npos);
+    GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, SensorIRGeneration) {
+    std::string source =
+        "if enemy nearby:\n"
+        "    player attack\n";
+
+    Lexer lexer(source, "sensor.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("GAME_SENSOR") != std::string::npos);
+    GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, DeadCodeElimination) {
+    std::string source =
+        "42 + 10\n"
+        "player move forward 5\n";
+
+    Lexer lexer(source, "dce.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    std::string before = module->toString();
+
+    GS_ASSERT(before.find("ADD") != std::string::npos);
+    GS_ASSERT(before.find("GAME_MOVE") != std::string::npos);
+
+    optimizer::DeadCodeEliminationPass dcePass;
+    bool changed = dcePass.runOnModule(*module);
+
+    GS_ASSERT(changed);
+
+    std::string after = module->toString();
+
+    GS_ASSERT(after.find("ADD") == std::string::npos);
+    GS_ASSERT(after.find("GAME_MOVE") != std::string::npos);
+}
