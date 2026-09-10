@@ -1,5 +1,12 @@
 #pragma once
 
+//==============================================================================
+// ASTVisitor.hpp
+//
+// Defines the visitor interface used to traverse and process nodes in the
+// GameScript Abstract Syntax Tree.
+//==============================================================================
+
 namespace gamescript {
 
 // Forward declarations of AST nodes
@@ -24,10 +31,12 @@ class BinaryExpr;
 class UnaryExpr;
 class SensoryConditionExpr;
 
+// Visitor interface for performing operations on different types of AST nodes.
 class ASTVisitor {
 public:
     virtual ~ASTVisitor() = default;
 
+    // Visitor methods for statement nodes.
     virtual void visit(Program& node) = 0;
     virtual void visit(VarDeclStmt& node) = 0;
     virtual void visit(MoveStmt& node) = 0;
@@ -40,7 +49,8 @@ public:
     virtual void visit(FunctionCallStmt& node) = 0;
     virtual void visit(WhenStmt& node) = 0;
     virtual void visit(ExprStmt& node) = 0;
-
+    
+    // Visitor methods for expression nodes.
     virtual void visit(IntegerLiteralExpr& node) = 0;
     virtual void visit(StringLiteralExpr& node) = 0;
     virtual void visit(BoolLiteralExpr& node) = 0;
