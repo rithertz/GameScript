@@ -115,3 +115,73 @@ GS_TEST(EndToEndTests, LoopAndFunctionPipeline) {
     GS_ASSERT_EQ(result.exitCode, 0);
     GS_ASSERT(result.success);
 }
+
+GS_TEST(EndToEndTests, BooleanSensorPipeline) {
+    std::string source =
+        "if enemy nearby and not health low:\n"
+        "    player attack\n";
+
+    driver::CompilerDriver driver;
+    driver::CompilerOptions opts;
+    opts.checkSemantic = true;
+    opts.dumpIR = true;
+    opts.optimize = true;
+    opts.dumpOptIR = true;
+    opts.dumpLLVM = true;
+
+    auto result = driver.compileSource(source, "boolean_sensor_e2e.gs", opts);
+
+    GS_ASSERT_EQ(result.exitCode, 0);
+    GS_ASSERT(result.success);
+
+    GS_ASSERT(result.irDump.find("GAME_SENSOR") != std::string::npos);
+    GS_ASSERT(result.irDump.find("AND") != std::string::npos);
+    GS_ASSERT(result.irDump.find("NOT") != std::string::npos);
+    GS_ASSERT(result.irDump.find("BR_COND") != std::string::npos);
+
+    GS_ASSERT(result.llvmDump.find("@gs_runtime_sensor") != std::string::npos);
+    GS_ASSERT(result.llvmDump.find("@gs_runtime_action") != std::string::npos);
+}
+
+GS_TEST(EndToEndTests, WhileLoopPipeline) {
+    std::string source =
+        "set count = 3\n"
+        "while count > 0:\n"
+        "    player move forward 1\n";
+
+    driver::CompilerDriver driver;
+    driver::CompilerOptions opts;
+    opts.checkSemantic = true;
+    opts.dumpIR = true;
+    opts.optimize = true;
+    opts.dumpOptIR = true;
+
+    auto result = driver.compileSource(source, "while_e2e.gs", opts);
+
+    GS_ASSERT_EQ(result.exitCode, 0);
+    GS_ASSERT(result.success);
+
+    GS_ASSERT(result.irDump.find("BR_COND") != std::string::npos);
+    GS_ASSERT(result.irDump.find("CMP_GT") != std::string::npos);
+    GS_ASSERT(result.irDump.find("GAME_MOVE") != std::string::npos);
+}
+
+GS_TEST(EndToEndTests, NegativeInvalidConditionType) {
+    std::string badSource =
+        "set health_value = 100\n"
+        "if health_value:\n"
+        "    player attack\n";
+
+    driver::CompilerDriver driver;
+    driver::CompilerOptions opts;
+
+    auto result = driver.compileSource(
+        badSource,
+        "invalid_condition.gs",
+        opts
+    );
+
+    GS_ASSERT_NE(result.exitCode, 0);
+    GS_ASSERT(!result.success);
+    GS_ASSERT(!result.errorLog.empty());
+}
