@@ -1,5 +1,12 @@
 #pragma once
 
+//==============================================================================
+// BasicBlock.hpp
+//
+// Defines a basic block in the GameScript intermediate representation (IR),
+// containing a sequence of instructions and its control-flow connections.
+//==============================================================================
+
 #include "gamescript/ir/Instruction.hpp"
 #include <string>
 #include <vector>
@@ -7,6 +14,7 @@
 
 namespace gamescript::ir {
 
+// Represents a basic block containing instructions and control-flow information.
 class BasicBlock {
 public:
     explicit BasicBlock(std::string name) : name_(std::move(name)) {}
@@ -23,6 +31,7 @@ public:
     const std::vector<std::string>& getPredecessors() const { return predecessors_; }
     const std::vector<std::string>& getSuccessors() const { return successors_; }
 
+    // Returns a human-readable representation of the basic block.
     std::string toString() const;
 
 private:
@@ -32,6 +41,7 @@ private:
     std::vector<std::string> successors_;
 };
 
+// Owning pointer to a basic block.
 using BasicBlockPtr = std::unique_ptr<BasicBlock>;
 
 } // namespace gamescript::ir
