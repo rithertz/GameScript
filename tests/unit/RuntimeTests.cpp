@@ -2,6 +2,7 @@
 #include "gamescript/lexer/Lexer.hpp"
 #include "gamescript/parser/Parser.hpp"
 #include "gamescript/ir/IRBuilder.hpp"
+#include "gamescript/optimizer/PassManager.hpp"
 #include "gamescript/runtime/GameWorld.hpp"
 #include "gamescript/runtime/VirtualMachine.hpp"
 #include "gamescript/runtime/SimulationRenderer.hpp"
@@ -76,6 +77,65 @@ GS_TEST(RuntimeTests, EndToEndProgramVMExecution) {
     // Enemy is nearby -> attacked!
     GS_ASSERT_EQ(world.getPlayer().facing, Direction::East);
     GS_ASSERT(!world.getActionLog().empty());
+}
+
+GS_TEST(RuntimeTests, EntryVariablesPreservedAfterExecution) {
+    std::string source =
+        "set speed = 5\n"
+        "set doubled = speed * 2\n";
+
+    Lexer lexer(source, "variables_runtime.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GameWorld world(10, 10);
+
+    VirtualMachine vm(world);
+    GS_ASSERT(vm.execute(*module));
+
+    const auto& variables = vm.getVariables();
+
+    GS_ASSERT(variables.find("speed") != variables.end());
+    GS_ASSERT(variables.find("doubled") != variables.end());
+
+    GS_ASSERT_EQ(variables.at("speed").asInt(), 5);
+    GS_ASSERT_EQ(variables.at("doubled").asInt(), 10);
+}
+
+GS_TEST(RuntimeTests, OptimizedFunctionCallExecution) {
+    std::string source =
+        "function patrol(distance):\n"
+        "    player move forward distance\n"
+        "\n"
+        "set steps = 3\n"
+        "call patrol(steps)\n";
+
+    Lexer lexer(source, "optimized_function_runtime.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    // Run the same optimization pipeline used by the compiler.
+    optimizer::PassManager passManager;
+    passManager.run(*module);
+
+    GameWorld world(10, 10);
+    world.setPlayerPosition(5, 5, Direction::North);
+
+    VirtualMachine vm(world);
+    GS_ASSERT(vm.execute(*module));
+
+    // steps = 3 should survive optimization and reach patrol().
+    GS_ASSERT_EQ(world.getPlayer().x, 5);
+    GS_ASSERT_EQ(world.getPlayer().y, 2);
+
+    // The movement command should execute successfully.
+    GS_ASSERT_EQ(world.getActionLog().size(), static_cast<size_t>(1));
 }
 
 GS_TEST(RuntimeTests, MovementDirectionsAndBoundaries) {
@@ -224,4 +284,90 @@ GS_TEST(RuntimeTests, RepeatLoopExecution) {
     GS_ASSERT_EQ(world.getPlayer().x, 2);
     GS_ASSERT_EQ(world.getPlayer().y, 2);
     GS_ASSERT_EQ(world.getActionLog().size(), static_cast<size_t>(3));
+}
+
+GS_TEST(RuntimeTests, FunctionCallPassesArgumentToParameter) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "\n"
+        "call strike(3)\n";
+
+    Lexer lexer(source, "function_arg_runtime.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GameWorld world(10, 10);
+    world.setPlayerPosition(5, 5, Direction::North);
+
+    VirtualMachine vm(world);
+    GS_ASSERT(vm.execute(*module));
+
+    GS_ASSERT_EQ(world.getPlayer().x, 5);
+    GS_ASSERT_EQ(world.getPlayer().y, 2);
+    GS_ASSERT_EQ(world.getActionLog().size(), static_cast<size_t>(1));
+}
+
+GS_TEST(RuntimeTests, FunctionCallPassesMultipleArguments) {
+    std::string source =
+        "function patrol(distance, angle):\n"
+        "    player move forward distance\n"
+        "    player turn right angle\n"
+        "\n"
+        "call patrol(2, 90)\n";
+
+    Lexer lexer(source, "function_multi_arg_runtime.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GameWorld world(10, 10);
+    world.setPlayerPosition(5, 5, Direction::North);
+
+    VirtualMachine vm(world);
+    GS_ASSERT(vm.execute(*module));
+
+    // distance = 2 -> North: (5,5) -> (5,3)
+    GS_ASSERT_EQ(world.getPlayer().x, 5);
+    GS_ASSERT_EQ(world.getPlayer().y, 3);
+
+    // angle = 90 -> North turns right to East
+    GS_ASSERT_EQ(world.getPlayer().facing, Direction::East);
+}
+
+GS_TEST(RuntimeTests, NestedFunctionCallsPreserveCallerState) {
+    std::string source =
+        "function inner(distance):\n"
+        "    player move forward distance\n"
+        "\n"
+        "function outer(distance):\n"
+        "    call inner(distance)\n"
+        "    player turn right 90\n"
+        "\n"
+        "call outer(2)\n";
+
+    Lexer lexer(source, "nested_function_runtime.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GameWorld world(10, 10);
+    world.setPlayerPosition(5, 5, Direction::North);
+
+    VirtualMachine vm(world);
+    GS_ASSERT(vm.execute(*module));
+
+    // inner receives outer's distance = 2.
+    GS_ASSERT_EQ(world.getPlayer().x, 5);
+    GS_ASSERT_EQ(world.getPlayer().y, 3);
+
+    // outer resumes after inner returns.
+    GS_ASSERT_EQ(world.getPlayer().facing, Direction::East);
 }
