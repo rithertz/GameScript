@@ -154,6 +154,12 @@ void SemanticAnalyzer::visit(FunctionDeclStmt& node) {
         funcSym.type = DataType::Void;
         funcSym.paramCount = node.getParams().size();
         funcSym.span = node.getSpan();
+
+        // GameScript function parameters currently use integer values.
+        // Store the parameter types in declaration order so call sites
+        // can validate each argument against its corresponding parameter.
+        funcSym.paramTypes.resize(node.getParams().size(), DataType::Integer);
+
         symbolTable_.define(funcSym);
     }
 
@@ -162,9 +168,23 @@ void SemanticAnalyzer::visit(FunctionDeclStmt& node) {
         Symbol paramSym;
         paramSym.name = param;
         paramSym.kind = SymbolKind::Parameter;
-        paramSym.type = DataType::Integer; // Default integer parameter
+        paramSym.type = DataType::Integer; // GameScript parameters currently use integer values.
         paramSym.span = node.getSpan();
-        symbolTable_.define(paramSym);
+        paramSym.scopeLevel = symbolTable_.getCurrentScopeLevel();
+
+        // Parameter names share the function's local scope. Reject duplicate
+        // parameter names instead of silently ignoring a failed definition.
+        if (!symbolTable_.define(paramSym)) {
+            std::string msg =
+                "Duplicate parameter '" + param +
+                "' in function '" + node.getName() + "'.";
+
+            if (diagnostics_) {
+                diagnostics_->reportSemanticError(node.getSpan(), msg);
+            }
+
+            hasInternalErrors_ = true;
+        }
     }
 
     for (const auto& stmt : node.getBody()) {
@@ -191,13 +211,39 @@ void SemanticAnalyzer::visit(FunctionCallStmt& node) {
 
     if (node.getArgs().size() != sym->paramCount) {
         std::string msg = "Function '" + node.getName() + "' expects " + std::to_string(sym->paramCount) +
-                          " arguments, but " + std::to_string(node.getArgs().size()) + " were provided.";
+                        " arguments, but " + std::to_string(node.getArgs().size()) + " were provided.";
         if (diagnostics_) diagnostics_->reportSemanticError(node.getSpan(), msg);
         hasInternalErrors_ = true;
     }
 
-    for (const auto& arg : node.getArgs()) {
-        if (arg) arg->accept(*this);
+    // Validate each argument against the corresponding parameter type.
+    // Only arguments with a matching parameter are type-checked, which
+    // prevents out-of-range access when the argument count is incorrect.
+    const size_t argumentsToCheck = std::min(node.getArgs().size(), sym->paramTypes.size());
+
+    for (size_t i = 0; i < argumentsToCheck; ++i) {
+        const auto& arg = node.getArgs()[i];
+
+        if (!arg) {
+            continue;
+        }
+
+        arg->accept(*this);
+        DataType argType = lastEvaluatedType_;
+        DataType paramType = sym->paramTypes[i];
+
+        if (argType != paramType && argType != DataType::Unknown) {
+            std::string msg =
+                "Argument " + std::to_string(i + 1) + " of function '" +
+                node.getName() + "' expects '" + dataTypeToString(paramType) +
+                "', but found '" + dataTypeToString(argType) + "'.";
+
+            if (diagnostics_) {
+                diagnostics_->reportSemanticError(arg->getSpan(), msg);
+            }
+
+            hasInternalErrors_ = true;
+        }
     }
 }
 
