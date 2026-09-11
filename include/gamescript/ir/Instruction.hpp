@@ -137,10 +137,25 @@ struct Instruction {
     Operand dest;
     Operand src1;
     Operand src2;
+
+    // Variable-length operands used by instructions such as CALL.
+    // For CALL, this stores the argument operands in declaration order.
+    std::vector<Operand> args;
+
     std::string comment;
 
-    Instruction(OpCode op, Operand dest = Operand::makeNone(), Operand src1 = Operand::makeNone(), Operand src2 = Operand::makeNone(), std::string comment = "")
-        : op(op), dest(std::move(dest)), src1(std::move(src1)), src2(std::move(src2)), comment(std::move(comment)) {}
+    Instruction(
+        OpCode op,
+        Operand dest = Operand::makeNone(),
+        Operand src1 = Operand::makeNone(),
+        Operand src2 = Operand::makeNone(),
+        std::string comment = ""
+    )
+        : op(op),
+          dest(std::move(dest)),
+          src1(std::move(src1)),
+          src2(std::move(src2)),
+          comment(std::move(comment)) {}
 
     // Returns a human-readable representation of the instruction.
     std::string toString() const;

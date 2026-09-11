@@ -40,6 +40,7 @@ std::string opCodeToString(OpCode op) {
 
 std::string Instruction::toString() const {
     std::ostringstream oss;
+
     if (op == OpCode::Label) {
         oss << dest.toString() << ":";
         return oss.str();
@@ -48,19 +49,32 @@ std::string Instruction::toString() const {
     oss << "  ";
     oss << std::left << std::setw(12) << opCodeToString(op);
 
-    if (dest.kind != Operand::Kind::None) {
-        oss << " " << dest.toString();
-    }
-    if (src1.kind != Operand::Kind::None) {
-        oss << ", " << src1.toString();
-    }
-    if (src2.kind != Operand::Kind::None) {
-        oss << ", " << src2.toString();
+    if (op == OpCode::Call) {
+        if (dest.kind != Operand::Kind::None) {
+            oss << " " << dest.toString();
+        }
+
+        for (const auto& arg : args) {
+            oss << ", " << arg.toString();
+        }
+    } else {
+        if (dest.kind != Operand::Kind::None) {
+            oss << " " << dest.toString();
+        }
+
+        if (src1.kind != Operand::Kind::None) {
+            oss << ", " << src1.toString();
+        }
+
+        if (src2.kind != Operand::Kind::None) {
+            oss << ", " << src2.toString();
+        }
     }
 
     if (!comment.empty()) {
         oss << "  # " << comment;
     }
+
     return oss.str();
 }
 
