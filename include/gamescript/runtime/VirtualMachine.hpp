@@ -46,6 +46,12 @@ struct VMValue {
     }
 };
 
+// Stores the runtime state belonging to one active function call.
+struct CallFrame {
+    std::unordered_map<std::string, VMValue> registers;
+    std::unordered_map<std::string, VMValue> variables;
+};
+
 // Executes IR instructions against a runtime game world.
 class VirtualMachine {
 public:
@@ -54,7 +60,10 @@ public:
     // Executes the specified IR module starting from the entry function.
     bool execute(const ir::IRModule& module, const std::string& entryFunction = "main");
 
-    const std::unordered_map<std::string, VMValue>& getVariables() const { return variables_; }
+    // Returns the variables from the entry function after execution.
+    const std::unordered_map<std::string, VMValue>& getVariables() const {
+        return variables_;
+    }
 
 private:
     // Resolves an IR operand to a runtime value.
@@ -63,8 +72,23 @@ private:
     // Stores a runtime value under the specified variable name.
     void storeValue(const std::string& name, VMValue val);
 
+    // Executes one function using its own call frame.
+    //
+    // outputVariables is optional and is used by the entry function to
+    // preserve its variables for external inspection after its frame
+    // has been removed from the call stack.
+    bool executeFunction(
+        const ir::IRModule& module,
+        const ir::IRFunction& function,
+        const std::vector<VMValue>& args,
+        int& stepsRemaining,
+        std::unordered_map<std::string, VMValue>* outputVariables = nullptr
+    );
+
     GameWorld& world_;
-    std::unordered_map<std::string, VMValue> registers_;
+    std::vector<CallFrame> callStack_;
+
+    // Stores the variables from the entry function for external inspection.
     std::unordered_map<std::string, VMValue> variables_;
 };
 

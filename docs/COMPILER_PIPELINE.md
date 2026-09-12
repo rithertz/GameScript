@@ -57,7 +57,13 @@ The GameScript compiler follows a standard ahead-of-time (AOT) and intermediate 
 3. **Semantic Analysis (`SemanticAnalyzer`)**:
    - AST Visitor pattern traversing the AST.
    - Maintains a scoped `SymbolTable` (supporting lexical parent scopes).
-   - Validates identifier declarations before use, prohibits re-declarations within the same scope level, checks argument arity on function calls, and verifies condition types.
+   - Validates identifier declarations before use.
+   - Prohibits re-declarations within the same scope level.
+   - Registers function declarations and their parameter information.
+   - Rejects duplicate function parameters.
+   - Checks function-call argument count.
+   - Checks each function-call argument against its corresponding parameter type.
+   - Verifies condition types.
 
 4. **Intermediate Representation (`IRBuilder`)**:
    - Lowers AST statements into linear 3-address instructions organized into `BasicBlock` structures within an `IRModule`.

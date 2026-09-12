@@ -148,6 +148,78 @@ GS_TEST(SemanticTests, AcceptFunctionCallWithCorrectArgumentCount) {
     GS_ASSERT(!diag.hasErrors());
 }
 
+GS_TEST(SemanticTests, RejectFunctionCallWithInvalidArgumentType) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "call strike(true)\n";
+
+    DiagnosticEngine diag(source, "invalid_function_arg_type.gs");
+    Lexer lexer(source, "invalid_function_arg_type.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, AcceptFunctionCallWithMultipleIntegerArguments) {
+    std::string source =
+        "function patrol(distance, angle):\n"
+        "    player move forward distance\n"
+        "    player turn right angle\n"
+        "call patrol(5, 90)\n";
+
+    DiagnosticEngine diag(source, "multiple_function_args.gs");
+    Lexer lexer(source, "multiple_function_args.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectDuplicateFunctionParameters) {
+    std::string source =
+        "function patrol(distance, distance):\n"
+        "    player move forward distance\n";
+
+    DiagnosticEngine diag(source, "duplicate_function_params.gs");
+    Lexer lexer(source, "duplicate_function_params.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectFunctionCallWithBooleanExpression) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "call strike(enemy nearby)\n";
+
+    DiagnosticEngine diag(source, "boolean_function_arg.gs");
+    Lexer lexer(source, "boolean_function_arg.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
 GS_TEST(SemanticTests, DetectUndefinedFunction) {
     std::string source =
         "call missing_function\n";

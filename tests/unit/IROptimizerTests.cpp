@@ -198,6 +198,74 @@ GS_TEST(IROptimizerTests, SensorIRGeneration) {
     GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
 }
 
+GS_TEST(IROptimizerTests, FunctionCallPreservesSingleArgument) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "call strike(3)\n";
+
+    Lexer lexer(source, "call_single_arg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("CALL") != std::string::npos);
+    GS_ASSERT(irDump.find("strike") != std::string::npos);
+    GS_ASSERT(irDump.find("3") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, FunctionCallPreservesMultipleArguments) {
+    std::string source =
+        "function patrol(distance, angle):\n"
+        "    player move forward distance\n"
+        "    player turn right angle\n"
+        "call patrol(5, 90)\n";
+
+    Lexer lexer(source, "call_multiple_args.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("CALL") != std::string::npos);
+    GS_ASSERT(irDump.find("patrol") != std::string::npos);
+    GS_ASSERT(irDump.find("5") != std::string::npos);
+    GS_ASSERT(irDump.find("90") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, FunctionCallLowersExpressionArgument) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "call strike(2 + 3)\n";
+
+    Lexer lexer(source, "call_expression_arg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string irDump = module->toString();
+
+    GS_ASSERT(irDump.find("CALL") != std::string::npos);
+    GS_ASSERT(irDump.find("strike") != std::string::npos);
+    GS_ASSERT(irDump.find("ADD") != std::string::npos);
+}
+
 GS_TEST(IROptimizerTests, DeadCodeElimination) {
     std::string source =
         "42 + 10\n"
@@ -225,3 +293,4 @@ GS_TEST(IROptimizerTests, DeadCodeElimination) {
     GS_ASSERT(after.find("ADD") == std::string::npos);
     GS_ASSERT(after.find("GAME_MOVE") != std::string::npos);
 }
+

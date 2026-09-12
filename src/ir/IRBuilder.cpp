@@ -253,7 +253,22 @@ void IRBuilder::visit(FunctionDeclStmt& node) {
 }
 
 void IRBuilder::visit(FunctionCallStmt& node) {
-    emit(Instruction(OpCode::Call, Operand::makeLabel(node.getName())));
+    Instruction call(
+        OpCode::Call,
+        Operand::makeLabel(node.getName())
+    );
+
+    // Lower each AST argument into an IR operand in declaration order.
+    for (const auto& arg : node.getArgs()) {
+        if (!arg) {
+            continue;
+        }
+
+        arg->accept(*this);
+        call.args.push_back(lastOperand_);
+    }
+
+    emit(std::move(call));
 }
 
 void IRBuilder::visit(WhenStmt& node) {
