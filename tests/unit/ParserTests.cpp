@@ -244,3 +244,120 @@ GS_TEST(ParserTests, FunctionArgumentsAndParenthesizedExpression) {
     GS_ASSERT(multiply != nullptr);
     GS_ASSERT_EQ(multiply->getOp(), BinaryOp::Multiply);
 }
+
+GS_TEST(ParserTests, KeywordLikeFunctionDeclaration) {
+    // Test that keyword-like names (action keywords) are accepted as function names
+    std::string source =
+        "function attack:\n"
+        "    player move forward 1\n"
+        "function defend:\n"
+        "    player jump\n"
+        "function jump:\n"
+        "    player interact\n";
+
+    Lexer lexer(source, "keyword_funcs.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 3);
+
+    auto* attackFunc = dynamic_cast<FunctionDeclStmt*>(program->getStatements()[0].get());
+    GS_ASSERT(attackFunc != nullptr);
+    GS_ASSERT_EQ(attackFunc->getName(), "attack");
+
+    auto* defendFunc = dynamic_cast<FunctionDeclStmt*>(program->getStatements()[1].get());
+    GS_ASSERT(defendFunc != nullptr);
+    GS_ASSERT_EQ(defendFunc->getName(), "defend");
+
+    auto* jumpFunc = dynamic_cast<FunctionDeclStmt*>(program->getStatements()[2].get());
+    GS_ASSERT(jumpFunc != nullptr);
+    GS_ASSERT_EQ(jumpFunc->getName(), "jump");
+}
+
+GS_TEST(ParserTests, KeywordLikeFunctionCall) {
+    // Test that keyword-like names (direction keywords) are accepted in function calls
+    std::string source =
+        "call forward\n"
+        "call backward\n"
+        "call attack\n";
+
+    Lexer lexer(source, "keyword_calls.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 3);
+
+    auto* forwardCall = dynamic_cast<FunctionCallStmt*>(program->getStatements()[0].get());
+    GS_ASSERT(forwardCall != nullptr);
+    GS_ASSERT_EQ(forwardCall->getName(), "forward");
+
+    auto* backwardCall = dynamic_cast<FunctionCallStmt*>(program->getStatements()[1].get());
+    GS_ASSERT(backwardCall != nullptr);
+    GS_ASSERT_EQ(backwardCall->getName(), "backward");
+
+    auto* attackCall = dynamic_cast<FunctionCallStmt*>(program->getStatements()[2].get());
+    GS_ASSERT(attackCall != nullptr);
+    GS_ASSERT_EQ(attackCall->getName(), "attack");
+}
+
+GS_TEST(ParserTests, InvalidFunctionDeclarationName) {
+    // Test that invalid tokens are rejected as function names
+    std::string source = "function true:\n    player attack\n";
+
+    DiagnosticEngine diag(source, "invalid_func.gs");
+    Lexer lexer(source, "invalid_func.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    // Parser should report error and set hasErrors flag
+    GS_ASSERT(parser.hasErrors());
+}
+
+GS_TEST(ParserTests, InvalidFunctionCallName) {
+    // Test that invalid tokens are rejected as function call names
+    std::string source = "call true\n";
+
+    DiagnosticEngine diag(source, "invalid_call.gs");
+    Lexer lexer(source, "invalid_call.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    // Parser should report error and set hasErrors flag
+    GS_ASSERT(parser.hasErrors());
+}
+
+GS_TEST(ParserTests, SensoryKeywordFunctionNames) {
+    // Test that sensory keywords can be used as function names
+    std::string source =
+        "function enemy:\n"
+        "    player attack\n"
+        "function health:\n"
+        "    player defend\n"
+        "call nearby\n"
+        "call distance\n";
+
+    Lexer lexer(source, "sensory_funcs.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 4);
+
+    auto* enemyFunc = dynamic_cast<FunctionDeclStmt*>(program->getStatements()[0].get());
+    GS_ASSERT(enemyFunc != nullptr);
+    GS_ASSERT_EQ(enemyFunc->getName(), "enemy");
+
+    auto* healthFunc = dynamic_cast<FunctionDeclStmt*>(program->getStatements()[1].get());
+    GS_ASSERT(healthFunc != nullptr);
+    GS_ASSERT_EQ(healthFunc->getName(), "health");
+
+    auto* nearbyCall = dynamic_cast<FunctionCallStmt*>(program->getStatements()[2].get());
+    GS_ASSERT(nearbyCall != nullptr);
+    GS_ASSERT_EQ(nearbyCall->getName(), "nearby");
+
+    auto* distanceCall = dynamic_cast<FunctionCallStmt*>(program->getStatements()[3].get());
+    GS_ASSERT(distanceCall != nullptr);
+    GS_ASSERT_EQ(distanceCall->getName(), "distance");
+}

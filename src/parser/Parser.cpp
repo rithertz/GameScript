@@ -89,6 +89,36 @@ void Parser::synchronize() {
     }
 }
 
+bool Parser::isValidFunctionName(const Token& token) const {
+    // Valid function names are:
+    // 1. Regular identifiers
+    if (token.is(TokenType::Identifier)) return true;
+    
+    // 2. Action keywords that can semantically serve as function names
+    if (token.is(TokenType::Attack)) return true;
+    if (token.is(TokenType::Defend)) return true;
+    if (token.is(TokenType::Jump)) return true;
+    if (token.is(TokenType::Interact)) return true;
+    if (token.is(TokenType::Retreat)) return true;
+    
+    // 3. Direction keywords that can serve as function names
+    if (token.is(TokenType::Forward)) return true;
+    if (token.is(TokenType::Backward)) return true;
+    if (token.is(TokenType::Left)) return true;
+    if (token.is(TokenType::Right)) return true;
+    
+    // 4. Sensory/state keywords that can serve as function names
+    if (token.is(TokenType::Enemy)) return true;
+    if (token.is(TokenType::Nearby)) return true;
+    if (token.is(TokenType::Health)) return true;
+    if (token.is(TokenType::Low)) return true;
+    if (token.is(TokenType::Obstacle)) return true;
+    if (token.is(TokenType::Ahead)) return true;
+    if (token.is(TokenType::Distance)) return true;
+    
+    return false;
+}
+
 std::unique_ptr<Program> Parser::parseProgram() {
     std::vector<StmtPtr> statements;
     SourceLocation startLoc = peek().span.start;
@@ -273,10 +303,10 @@ StmtPtr Parser::parseWhileStatement() {
 StmtPtr Parser::parseFunctionDecl() {
     Token funcTok = consume(TokenType::Function, "Expected 'function'.");
     
-    // Accept any token (keyword or identifier) as function name
+    // Validate function name token
     Token nameTok = peek();
-    if (nameTok.is(TokenType::EndOfFile)) {
-        std::string msg = "Expected function name.";
+    if (!isValidFunctionName(nameTok)) {
+        std::string msg = "Expected function name. Found '" + nameTok.lexeme + "'.";
         if (diagnostics_) {
             diagnostics_->reportSyntaxError(nameTok.span, msg);
         }
@@ -306,10 +336,15 @@ StmtPtr Parser::parseFunctionDecl() {
 StmtPtr Parser::parseFunctionCall() {
     Token callTok = consume(TokenType::Call, "Expected 'call'.");
     Token nameTok = peek();
-    if (nameTok.is(TokenType::EndOfFile)) {
-        throw std::runtime_error("Expected function name after 'call'. Found EOF.");
+    if (!isValidFunctionName(nameTok)) {
+        std::string msg = "Expected function name after 'call'. Found '" + nameTok.lexeme + "'.";
+        if (diagnostics_) {
+            diagnostics_->reportSyntaxError(nameTok.span, msg);
+        }
+        hasInternalErrors_ = true;
+        throw std::runtime_error(msg);
     }
-    advance();  // Accept any token (keyword or identifier) as function name
+    advance();
 
     std::vector<ExprPtr> args;
     if (match(TokenType::LParen)) {

@@ -43,6 +43,9 @@ private:
 
     void skipNewlines();
     void synchronize();
+    
+    // Helper to validate token as a contextual function name
+    bool isValidFunctionName(const Token& token) const;
 
     // Statement parsers
     StmtPtr parseStatement();
