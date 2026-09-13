@@ -290,6 +290,25 @@ GS_TEST(SemanticTests, AcceptBooleanLogic) {
     GS_ASSERT(!diag.hasErrors());
 }
 
+GS_TEST(SemanticTests, AcceptFunctionCallingLaterDeclaredFunction) {
+    std::string source =
+        "function attack:\n"
+        "    call defend\n"
+        "function defend:\n"
+        "    player attack\n";
+
+    DiagnosticEngine diag(source, "mutual_forward_function.gs");
+    Lexer lexer(source, "mutual_forward_function.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
+
 GS_TEST(SemanticTests, RejectInvalidComparisonTypes) {
     std::string source =
         "set enabled = true\n"

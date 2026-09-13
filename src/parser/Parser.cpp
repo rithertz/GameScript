@@ -272,7 +272,18 @@ StmtPtr Parser::parseWhileStatement() {
 
 StmtPtr Parser::parseFunctionDecl() {
     Token funcTok = consume(TokenType::Function, "Expected 'function'.");
-    Token nameTok = consume(TokenType::Identifier, "Expected function name.");
+    
+    // Accept any token (keyword or identifier) as function name
+    Token nameTok = peek();
+    if (nameTok.is(TokenType::EndOfFile)) {
+        std::string msg = "Expected function name.";
+        if (diagnostics_) {
+            diagnostics_->reportSyntaxError(nameTok.span, msg);
+        }
+        hasInternalErrors_ = true;
+        throw std::runtime_error(msg);
+    }
+    advance();
     
     std::vector<std::string> params;
     if (match(TokenType::LParen)) {
@@ -294,7 +305,11 @@ StmtPtr Parser::parseFunctionDecl() {
 
 StmtPtr Parser::parseFunctionCall() {
     Token callTok = consume(TokenType::Call, "Expected 'call'.");
-    Token nameTok = consume(TokenType::Identifier, "Expected function name after 'call'.");
+    Token nameTok = peek();
+    if (nameTok.is(TokenType::EndOfFile)) {
+        throw std::runtime_error("Expected function name after 'call'. Found EOF.");
+    }
+    advance();  // Accept any token (keyword or identifier) as function name
 
     std::vector<ExprPtr> args;
     if (match(TokenType::LParen)) {
