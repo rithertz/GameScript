@@ -114,7 +114,6 @@ void IRBuilder::visit(ActionStmt& node) {
 
     emit(Instruction(OpCode::GameAction, Operand::makeInt(actionCode), Operand::makeNone(), Operand::makeNone(), "player " + actionKindToString(node.getAction())));
 }
-
 void IRBuilder::visit(IfStmt& node) {
     Operand condOp = Operand::makeBool(true);
     if (node.getCondition()) {
@@ -129,30 +128,46 @@ void IRBuilder::visit(IfStmt& node) {
     bool hasElse = !node.getElseBranch().empty();
     std::string falseTarget = hasElse ? elseLabel : mergeLabel;
 
+    BasicBlock* conditionBlock = currentBlock_;
+
     emit(Instruction(OpCode::BranchCond, condOp, Operand::makeLabel(thenLabel), Operand::makeLabel(falseTarget)));
+
+    // Create Merge Block
+    BasicBlock* mergeBlock = createBlock(mergeLabel);
 
     // Then Block
     BasicBlock* thenBlock = createBlock(thenLabel);
+    connectBlocks(conditionBlock, thenBlock);
     setInsertBlock(thenBlock);
+
     for (const auto& s : node.getThenBranch()) {
         if (s) s->accept(*this);
     }
+
+    BasicBlock* thenEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(mergeLabel)));
+    connectBlocks(thenEndBlock, mergeBlock);
 
     // Else Block
     if (hasElse) {
         BasicBlock* elseBlock = createBlock(elseLabel);
+        connectBlocks(conditionBlock, elseBlock);
         setInsertBlock(elseBlock);
+
         for (const auto& s : node.getElseBranch()) {
             if (s) s->accept(*this);
         }
+        BasicBlock* elseEndBlock = currentBlock_;
         emit(Instruction(OpCode::Branch, Operand::makeLabel(mergeLabel)));
+        connectBlocks(elseEndBlock, mergeBlock);
+    } else {
+        connectBlocks(conditionBlock, mergeBlock);
     }
 
     // Merge Block
-    BasicBlock* mergeBlock = createBlock(mergeLabel);
     setInsertBlock(mergeBlock);
 }
+
 
 void IRBuilder::visit(RepeatStmt& node) {
     Operand countOp = Operand::makeInt(1);
@@ -168,11 +183,12 @@ void IRBuilder::visit(RepeatStmt& node) {
     std::string headLabel = nextLabel("repeat_head_");
     std::string bodyLabel = nextLabel("repeat_body_");
     std::string exitLabel = nextLabel("repeat_exit_");
-
+    BasicBlock* entryBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
 
     // Loop Header
     BasicBlock* headBlock = createBlock(headLabel);
+    connectBlocks(entryBlock, headBlock);
     setInsertBlock(headBlock);
     Operand curVal = nextRegister();
     emit(Instruction(OpCode::Load, curVal, Operand::makeVar(loopVar)));
@@ -182,7 +198,9 @@ void IRBuilder::visit(RepeatStmt& node) {
 
     // Loop Body
     BasicBlock* bodyBlock = createBlock(bodyLabel);
+    connectBlocks(headBlock, bodyBlock);
     setInsertBlock(bodyBlock);
+
     for (const auto& s : node.getBody()) {
         if (s) s->accept(*this);
     }
@@ -193,9 +211,11 @@ void IRBuilder::visit(RepeatStmt& node) {
     emit(Instruction(OpCode::Sub, decVal, valToDec, Operand::makeInt(1)));
     emit(Instruction(OpCode::Store, Operand::makeVar(loopVar), decVal));
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
+    connectBlocks(bodyBlock, headBlock);
 
     // Exit Block
     BasicBlock* exitBlock = createBlock(exitLabel);
+    connectBlocks(headBlock, exitBlock);
     setInsertBlock(exitBlock);
 }
 
@@ -204,11 +224,14 @@ void IRBuilder::visit(WhileStmt& node) {
     std::string bodyLabel = nextLabel("while_body_");
     std::string exitLabel = nextLabel("while_exit_");
 
+    BasicBlock* entryBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
 
     // Loop Header: evaluate condition
     BasicBlock* headBlock = createBlock(headLabel);
+    connectBlocks(entryBlock, headBlock);
     setInsertBlock(headBlock);
+
     Operand condOp = Operand::makeBool(true);
     if (node.getCondition()) {
         node.getCondition()->accept(*this);
@@ -218,14 +241,20 @@ void IRBuilder::visit(WhileStmt& node) {
 
     // Loop Body
     BasicBlock* bodyBlock = createBlock(bodyLabel);
+    connectBlocks(headBlock, bodyBlock);
     setInsertBlock(bodyBlock);
+    
     for (const auto& s : node.getBody()) {
         if (s) s->accept(*this);
     }
+
+    BasicBlock* bodyEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
+    connectBlocks(bodyEndBlock, headBlock);
 
     // Exit Block
     BasicBlock* exitBlock = createBlock(exitLabel);
+    connectBlocks(headBlock, exitBlock);
     setInsertBlock(exitBlock);
 }
 
@@ -384,5 +413,13 @@ void IRBuilder::visit(SensoryConditionExpr& node) {
     emit(Instruction(OpCode::GameSensor, destReg, Operand::makeInt(sensorId), Operand::makeNone(), sensoryTypeToString(node.getSensoryType())));
     lastOperand_ = destReg;
 }
+// Connects two basic blocks by adding a control-flow edge between them.
+void IRBuilder::connectBlocks(BasicBlock* from, BasicBlock* to) {
+    if (!from || !to) {
+        return;
+    }
 
+    from->addSuccessor(to->getName());
+    to->addPredecessor(from->getName());
+}
 } // namespace gamescript::ir

@@ -69,6 +69,10 @@ The GameScript compiler follows a standard ahead-of-time (AOT) and intermediate 
    - Lowers AST statements into linear 3-address instructions organized into `BasicBlock` structures within an `IRModule`.
    - Generates virtual SSA-style registers (`%0`, `%1`, `%2`) for intermediate expression evaluation.
    - Converts nested conditionals and loops into explicit jump/branch control-flow graphs (`BRANCH`, `BRANCH_COND`, `LABEL`).
+   - **BasicBlock**: Represents a straight-line sequence of IR instructions with a single entry point. Each basic block also stores the names of its predecessor and successor blocks.
+   - **Predecessor**: A basic block that can transfer control directly into the current block. Predecessor information is recorded when CFG branch edges are created.
+   - **Successor**: A basic block that can be reached directly from the current block. Successor information is recorded for each control-flow branch.
+   - **Branch edges**: Control-flow relationships between basic blocks created by `BRANCH` and `BRANCH_COND` instructions. Conditional branches can connect one block to two successors, while loops also create back-edges from the loop body to its header.
 
 5. **Optimization Passes (`PassManager`)**:
    - **Constant Folding**: Evaluates constant arithmetic/relational expressions at compile time.
