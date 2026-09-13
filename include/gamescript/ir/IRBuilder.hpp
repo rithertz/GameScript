@@ -66,6 +66,9 @@ private:
     // Adds an instruction to the current basic block.
     void emit(Instruction inst);
 
+    // Connects two basic blocks in the control-flow graph.
+    void connectBlocks(BasicBlock* from, BasicBlock* to);
+
     std::unique_ptr<IRModule> module_;
     IRFunction* currentFunction_ = nullptr;
     BasicBlock* currentBlock_ = nullptr;
@@ -74,5 +77,6 @@ private:
     int labelCounter_ = 0;
     Operand lastOperand_ = Operand::makeNone();
 };
+
 
 } // namespace gamescript::ir
