@@ -144,8 +144,9 @@ void IRBuilder::visit(IfStmt& node) {
         if (s) s->accept(*this);
     }
 
+    BasicBlock* thenEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(mergeLabel)));
-    connectBlocks(thenBlock, mergeBlock);
+    connectBlocks(thenEndBlock, mergeBlock);
 
     // Else Block
     if (hasElse) {
@@ -156,9 +157,9 @@ void IRBuilder::visit(IfStmt& node) {
         for (const auto& s : node.getElseBranch()) {
             if (s) s->accept(*this);
         }
-
+        BasicBlock* elseEndBlock = currentBlock_;
         emit(Instruction(OpCode::Branch, Operand::makeLabel(mergeLabel)));
-        connectBlocks(elseBlock, mergeBlock);
+        connectBlocks(elseEndBlock, mergeBlock);
     } else {
         connectBlocks(conditionBlock, mergeBlock);
     }
@@ -246,8 +247,10 @@ void IRBuilder::visit(WhileStmt& node) {
     for (const auto& s : node.getBody()) {
         if (s) s->accept(*this);
     }
+
+    BasicBlock* bodyEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
-    connectBlocks(bodyBlock, headBlock);
+    connectBlocks(bodyEndBlock, headBlock);
 
     // Exit Block
     BasicBlock* exitBlock = createBlock(exitLabel);

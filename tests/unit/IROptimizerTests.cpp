@@ -281,6 +281,82 @@ GS_TEST(IROptimizerTests, WhileCFGEdges) {
     GS_ASSERT(bodyBlock->getSuccessors()[0] == headBlock->getName());
 }
 
+GS_TEST(IROptimizerTests, NestedIfWhileCFGEdges) {
+    std::string source =
+        "set count = 3\n"
+        "while count > 0:\n"
+        "    if health low:\n"
+        "        player defend\n"
+        "    else:\n"
+        "        player attack\n";
+
+    Lexer lexer(source, "nested_if_while_cfg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    auto* mainFunction = module->getMainFunction();
+    GS_ASSERT(mainFunction != nullptr);
+
+    // Expected blocks:
+    // entry -> while head -> while body
+    // while body -> if then / if else
+    // if then / if else -> if merge
+    // if merge -> while head
+    GS_ASSERT(mainFunction->blocks.size() == 7);
+
+    auto* entryBlock = mainFunction->blocks[0].get();
+    auto* headBlock = mainFunction->blocks[1].get();
+    auto* bodyBlock = mainFunction->blocks[2].get();
+    auto* mergeBlock = mainFunction->blocks[3].get();
+    auto* thenBlock = mainFunction->blocks[4].get();
+    auto* elseBlock = mainFunction->blocks[5].get();
+    auto* exitBlock = mainFunction->blocks[6].get();
+
+    // Entry -> while head
+    GS_ASSERT(entryBlock->getSuccessors().size() == 1);
+    GS_ASSERT(entryBlock->getSuccessors()[0] == headBlock->getName());
+
+    // While head -> body and exit
+    GS_ASSERT(headBlock->getPredecessors().size() == 2);
+    GS_ASSERT(headBlock->getPredecessors()[0] == entryBlock->getName());
+    GS_ASSERT(headBlock->getPredecessors()[1] == mergeBlock->getName());
+
+    GS_ASSERT(headBlock->getSuccessors().size() == 2);
+
+    // While body -> nested if branches
+    GS_ASSERT(bodyBlock->getSuccessors().size() == 2);
+
+    GS_ASSERT(thenBlock->getPredecessors().size() == 1);
+    GS_ASSERT(thenBlock->getPredecessors()[0] == bodyBlock->getName());
+
+    GS_ASSERT(elseBlock->getPredecessors().size() == 1);
+    GS_ASSERT(elseBlock->getPredecessors()[0] == bodyBlock->getName());
+
+    // Nested if branches -> merge
+    GS_ASSERT(thenBlock->getSuccessors().size() == 1);
+    GS_ASSERT(thenBlock->getSuccessors()[0] == mergeBlock->getName());
+
+    GS_ASSERT(elseBlock->getSuccessors().size() == 1);
+    GS_ASSERT(elseBlock->getSuccessors()[0] == mergeBlock->getName());
+
+    GS_ASSERT(mergeBlock->getPredecessors().size() == 2);
+    GS_ASSERT(mergeBlock->getPredecessors()[0] == thenBlock->getName());
+    GS_ASSERT(mergeBlock->getPredecessors()[1] == elseBlock->getName());
+
+    // Nested if merge -> while head (loop back-edge)
+    GS_ASSERT(mergeBlock->getSuccessors().size() == 1);
+    GS_ASSERT(mergeBlock->getSuccessors()[0] == headBlock->getName());
+
+    // While exit -> no successor
+    GS_ASSERT(exitBlock->getPredecessors().size() == 1);
+    GS_ASSERT(exitBlock->getPredecessors()[0] == headBlock->getName());
+}
+
 GS_TEST(IROptimizerTests, BooleanExpressionIRGeneration) {
     std::string source =
         "if enemy nearby and not health low:\n"
