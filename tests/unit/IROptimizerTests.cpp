@@ -116,6 +116,48 @@ GS_TEST(IROptimizerTests, IfElseIRGeneration) {
     GS_ASSERT(irDump.find("GAME_ACTION") != std::string::npos);
 }
 
+GS_TEST(IROptimizerTests, IfElseCFGEdges) {
+    std::string source =
+        "if health low:\n"
+        "    player defend\n"
+        "else:\n"
+        "    player attack\n";
+
+    Lexer lexer(source, "if_else_cfg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    auto* mainFunction = module->getMainFunction();
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(mainFunction->blocks.size() == 4);
+
+    auto* entryBlock = mainFunction->blocks[0].get();
+    auto* mergeBlock = mainFunction->blocks[1].get();
+    auto* thenBlock = mainFunction->blocks[2].get();
+    auto* elseBlock = mainFunction->blocks[3].get();
+
+    GS_ASSERT(entryBlock->getSuccessors().size() == 2);
+
+    GS_ASSERT(thenBlock->getPredecessors().size() == 1);
+    GS_ASSERT(elseBlock->getPredecessors().size() == 1);
+
+    GS_ASSERT(thenBlock->getPredecessors()[0] == entryBlock->getName());
+    GS_ASSERT(elseBlock->getPredecessors()[0] == entryBlock->getName());
+
+    GS_ASSERT(thenBlock->getSuccessors().size() == 1);
+    GS_ASSERT(elseBlock->getSuccessors().size() == 1);
+
+    GS_ASSERT(thenBlock->getSuccessors()[0] == mergeBlock->getName());
+    GS_ASSERT(elseBlock->getSuccessors()[0] == mergeBlock->getName());
+
+    GS_ASSERT(mergeBlock->getPredecessors().size() == 2);
+}
+
 GS_TEST(IROptimizerTests, RepeatLoopIRGeneration) {
     std::string source =
         "repeat 3:\n"
@@ -134,6 +176,46 @@ GS_TEST(IROptimizerTests, RepeatLoopIRGeneration) {
 
     GS_ASSERT(irDump.find("BR") != std::string::npos);
     GS_ASSERT(irDump.find("GAME_MOVE") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, RepeatCFGEdges) {
+    std::string source =
+        "repeat 3:\n"
+        "    player move forward 1\n";
+
+    Lexer lexer(source, "repeat_cfg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    auto* mainFunction = module->getMainFunction();
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(mainFunction->blocks.size() == 4);
+
+    auto* entryBlock = mainFunction->blocks[0].get();
+    auto* headBlock = mainFunction->blocks[1].get();
+    auto* bodyBlock = mainFunction->blocks[2].get();
+    auto* exitBlock = mainFunction->blocks[3].get();
+
+    GS_ASSERT(entryBlock->getSuccessors().size() == 1);
+    GS_ASSERT(headBlock->getPredecessors().size() == 2);
+
+    GS_ASSERT(headBlock->getPredecessors()[0] == entryBlock->getName());
+    GS_ASSERT(headBlock->getPredecessors()[1] == bodyBlock->getName());
+
+    GS_ASSERT(headBlock->getSuccessors().size() == 2);
+    GS_ASSERT(bodyBlock->getPredecessors().size() == 1);
+    GS_ASSERT(exitBlock->getPredecessors().size() == 1);
+
+    GS_ASSERT(bodyBlock->getPredecessors()[0] == headBlock->getName());
+    GS_ASSERT(exitBlock->getPredecessors()[0] == headBlock->getName());
+
+    GS_ASSERT(bodyBlock->getSuccessors().size() == 1);
+    GS_ASSERT(bodyBlock->getSuccessors()[0] == headBlock->getName());
 }
 
 GS_TEST(IROptimizerTests, WhileLoopIRGeneration) {
@@ -155,6 +237,48 @@ GS_TEST(IROptimizerTests, WhileLoopIRGeneration) {
 
     GS_ASSERT(irDump.find("BR_COND") != std::string::npos);
     GS_ASSERT(irDump.find("GAME_MOVE") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, WhileCFGEdges) {
+    std::string source =
+        "set count = 3\n"
+        "while count > 0:\n"
+        "    player move forward 1\n";
+
+    Lexer lexer(source, "while_cfg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    auto* mainFunction = module->getMainFunction();
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(mainFunction->blocks.size() == 4);
+
+    auto* entryBlock = mainFunction->blocks[0].get();
+    auto* headBlock = mainFunction->blocks[1].get();
+    auto* bodyBlock = mainFunction->blocks[2].get();
+    auto* exitBlock = mainFunction->blocks[3].get();
+
+    GS_ASSERT(entryBlock->getSuccessors().size() == 1);
+
+    GS_ASSERT(headBlock->getPredecessors().size() == 2);
+    GS_ASSERT(headBlock->getPredecessors()[0] == entryBlock->getName());
+    GS_ASSERT(headBlock->getPredecessors()[1] == bodyBlock->getName());
+
+    GS_ASSERT(headBlock->getSuccessors().size() == 2);
+
+    GS_ASSERT(bodyBlock->getPredecessors().size() == 1);
+    GS_ASSERT(bodyBlock->getPredecessors()[0] == headBlock->getName());
+
+    GS_ASSERT(exitBlock->getPredecessors().size() == 1);
+    GS_ASSERT(exitBlock->getPredecessors()[0] == headBlock->getName());
+
+    GS_ASSERT(bodyBlock->getSuccessors().size() == 1);
+    GS_ASSERT(bodyBlock->getSuccessors()[0] == headBlock->getName());
 }
 
 GS_TEST(IROptimizerTests, BooleanExpressionIRGeneration) {
