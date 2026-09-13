@@ -255,7 +255,7 @@ GS_TEST(SemanticTests, DetectDuplicateFunctionDeclaration) {
     GS_ASSERT(diag.hasErrors());
 }
 
-GS_TEST(SemanticTests, DetectFunctionCallBeforeDeclaration) {
+GS_TEST(SemanticTests, AcceptFunctionCallBeforeDeclaration) {
     std::string source =
         "call patrol\n"
         "function patrol:\n"
@@ -269,13 +269,8 @@ GS_TEST(SemanticTests, DetectFunctionCallBeforeDeclaration) {
     SemanticAnalyzer semantic(&diag);
     bool ok = semantic.analyze(*program);
 
-    /*
-     * The current semantic analyzer performs declaration/use
-     * checking in source order, so a function must be declared
-     * before it is called.
-     */
-    GS_ASSERT(!ok);
-    GS_ASSERT(diag.hasErrors());
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
 }
 
 GS_TEST(SemanticTests, AcceptBooleanLogic) {

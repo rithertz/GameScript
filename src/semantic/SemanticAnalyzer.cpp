@@ -27,7 +27,39 @@ DataType SemanticAnalyzer::getExprType(Expr* expr) const {
     return DataType::Unknown;
 }
 
+void SemanticAnalyzer::declareFunction(FunctionDeclStmt& node) {
+    if (symbolTable_.resolveCurrent(node.getName()).has_value()) {
+        std::string msg = "Redefinition of function '" + node.getName() + "'.";
+        if (diagnostics_) {
+            diagnostics_->reportSemanticError(node.getSpan(), msg);
+        }
+        hasInternalErrors_ = true;
+        return;
+    }
+
+    Symbol funcSym;
+    funcSym.name = node.getName();
+    funcSym.kind = SymbolKind::Function;
+    funcSym.type = DataType::Void;
+    funcSym.paramCount = node.getParams().size();
+    funcSym.span = node.getSpan();
+
+    // GameScript function parameters currently use integer values.
+    funcSym.paramTypes.resize(node.getParams().size(), DataType::Integer);
+
+    symbolTable_.define(funcSym);
+}
+
 void SemanticAnalyzer::visit(Program& node) {
+    // Pass 1: collect all function declarations so that functions can
+    // be referenced before their declaration in the source file.
+    for (const auto& stmt : node.getStatements()) {
+        if (auto* function = dynamic_cast<FunctionDeclStmt*>(stmt.get())) {
+            declareFunction(*function);
+        }
+    }
+
+    // Pass 2: perform normal semantic analysis on the complete program.
     for (const auto& stmt : node.getStatements()) {
         if (stmt) {
             stmt->accept(*this);
@@ -143,26 +175,6 @@ void SemanticAnalyzer::visit(WhileStmt& node) {
 }
 
 void SemanticAnalyzer::visit(FunctionDeclStmt& node) {
-    if (symbolTable_.resolveCurrent(node.getName()).has_value()) {
-        std::string msg = "Redefinition of function '" + node.getName() + "'.";
-        if (diagnostics_) diagnostics_->reportSemanticError(node.getSpan(), msg);
-        hasInternalErrors_ = true;
-    } else {
-        Symbol funcSym;
-        funcSym.name = node.getName();
-        funcSym.kind = SymbolKind::Function;
-        funcSym.type = DataType::Void;
-        funcSym.paramCount = node.getParams().size();
-        funcSym.span = node.getSpan();
-
-        // GameScript function parameters currently use integer values.
-        // Store the parameter types in declaration order so call sites
-        // can validate each argument against its corresponding parameter.
-        funcSym.paramTypes.resize(node.getParams().size(), DataType::Integer);
-
-        symbolTable_.define(funcSym);
-    }
-
     symbolTable_.enterScope();
     for (const auto& param : node.getParams()) {
         Symbol paramSym;

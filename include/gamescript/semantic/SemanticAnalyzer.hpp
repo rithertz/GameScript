@@ -53,6 +53,7 @@ public:
     DataType getExprType(Expr* expr) const;
 
 private:
+    void declareFunction(FunctionDeclStmt& node);
     // Stores the inferred data type for an expression.
     void setExprType(Expr* expr, DataType type);
 
