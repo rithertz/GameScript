@@ -311,6 +311,7 @@ void IRBuilder::visit(WhenStmt& node) {
     std::string whenBodyLabel = nextLabel("when_body_");
     std::string whenExitLabel = nextLabel("when_exit_");
 
+    BasicBlock* conditionBlock = currentBlock_;
     emit(Instruction(OpCode::BranchCond, condOp, Operand::makeLabel(whenBodyLabel), Operand::makeLabel(whenExitLabel)));
 
     BasicBlock* bodyBlock = createBlock(whenBodyLabel);
@@ -318,9 +319,16 @@ void IRBuilder::visit(WhenStmt& node) {
     for (const auto& s : node.getBody()) {
         if (s) s->accept(*this);
     }
+
+    BasicBlock* bodyEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(whenExitLabel)));
 
     BasicBlock* exitBlock = createBlock(whenExitLabel);
+
+    connectBlocks(conditionBlock, bodyBlock);
+    connectBlocks(conditionBlock, exitBlock);
+    connectBlocks(bodyEndBlock, exitBlock);
+
     setInsertBlock(exitBlock);
 }
 
