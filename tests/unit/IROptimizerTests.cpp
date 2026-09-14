@@ -158,6 +158,22 @@ GS_TEST(IROptimizerTests, IfElseCFGEdges) {
     GS_ASSERT(mergeBlock->getPredecessors().size() == 2);
 }
 
+GS_TEST(IROptimizerTests, BasicBlockRejectsDuplicateCFGEdges) {
+    ir::BasicBlock block("test_block");
+
+    block.addPredecessor("pred");
+    block.addPredecessor("pred");
+
+    block.addSuccessor("succ");
+    block.addSuccessor("succ");
+
+    GS_ASSERT(block.getPredecessors().size() == 1);
+    GS_ASSERT(block.getPredecessors()[0] == "pred");
+
+    GS_ASSERT(block.getSuccessors().size() == 1);
+    GS_ASSERT(block.getSuccessors()[0] == "succ");
+}
+
 GS_TEST(IROptimizerTests, RepeatLoopIRGeneration) {
     std::string source =
         "repeat 3:\n"
