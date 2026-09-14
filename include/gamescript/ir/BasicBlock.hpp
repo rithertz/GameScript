@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 namespace gamescript::ir {
 
@@ -25,8 +26,17 @@ public:
     std::vector<Instruction>& getInstructions() { return instructions_; }
     const std::vector<Instruction>& getInstructions() const { return instructions_; }
 
-    void addPredecessor(std::string pred) { predecessors_.push_back(std::move(pred)); }
-    void addSuccessor(std::string succ) { successors_.push_back(std::move(succ)); }
+    void addPredecessor(std::string pred) {
+        if (std::find(predecessors_.begin(), predecessors_.end(), pred) == predecessors_.end()) {
+            predecessors_.push_back(std::move(pred));
+        }
+    }
+
+    void addSuccessor(std::string succ) {
+        if (std::find(successors_.begin(), successors_.end(), succ) == successors_.end()) {
+            successors_.push_back(std::move(succ));
+        }
+    }
 
     const std::vector<std::string>& getPredecessors() const { return predecessors_; }
     const std::vector<std::string>& getSuccessors() const { return successors_; }
