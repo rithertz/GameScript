@@ -157,6 +157,42 @@ GS_TEST(IROptimizerTests, IfElseCFGEdges) {
 
     GS_ASSERT(mergeBlock->getPredecessors().size() == 2);
 }
+GS_TEST(IROptimizerTests, WhenCFGEdges) {
+    std::string source =
+        "when health low:\n"
+        "    player defend\n";
+
+    Lexer lexer(source, "when_cfg.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    auto* mainFunction = module->getMainFunction();
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(mainFunction->blocks.size() == 3);
+
+    auto* conditionBlock = mainFunction->blocks[0].get();
+    auto* bodyBlock = mainFunction->blocks[1].get();
+    auto* exitBlock = mainFunction->blocks[2].get();
+
+    // Condition -> body and exit
+    GS_ASSERT(conditionBlock->getSuccessors().size() == 2);
+
+    GS_ASSERT(bodyBlock->getPredecessors().size() == 1);
+    GS_ASSERT(bodyBlock->getPredecessors()[0] == conditionBlock->getName());
+
+    GS_ASSERT(exitBlock->getPredecessors().size() == 2);
+    GS_ASSERT(exitBlock->getPredecessors()[0] == conditionBlock->getName());
+    GS_ASSERT(exitBlock->getPredecessors()[1] == bodyBlock->getName());
+
+    // Body -> exit
+    GS_ASSERT(bodyBlock->getSuccessors().size() == 1);
+    GS_ASSERT(bodyBlock->getSuccessors()[0] == exitBlock->getName());
+}
 
 GS_TEST(IROptimizerTests, BasicBlockRejectsDuplicateCFGEdges) {
     ir::BasicBlock block("test_block");
