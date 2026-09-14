@@ -210,8 +210,10 @@ void IRBuilder::visit(RepeatStmt& node) {
     Operand decVal = nextRegister();
     emit(Instruction(OpCode::Sub, decVal, valToDec, Operand::makeInt(1)));
     emit(Instruction(OpCode::Store, Operand::makeVar(loopVar), decVal));
+
+    BasicBlock* bodyEndBlock = currentBlock_;
     emit(Instruction(OpCode::Branch, Operand::makeLabel(headLabel)));
-    connectBlocks(bodyBlock, headBlock);
+    connectBlocks(bodyEndBlock, headBlock);
 
     // Exit Block
     BasicBlock* exitBlock = createBlock(exitLabel);
