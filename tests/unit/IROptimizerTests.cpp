@@ -73,6 +73,102 @@ GS_TEST(IROptimizerTests, ConstantPropagationOptimization) {
     GS_ASSERT(irDump.find("GAME_MOVE    0, 10") != std::string::npos || irDump.find("propagated constant") != std::string::npos);
 }
 
+GS_TEST(IROptimizerTests, ConstantPropagationRespectsReassignment) {
+    std::string source =
+        "set x = 10\n"
+        "x = 20\n"
+        "player move forward x\n";
+
+    DiagnosticEngine diag(source, "prop_reassignment.gs");
+    Lexer lexer(source, "prop_reassignment.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    GS_ASSERT(semantic.analyze(*program));
+    GS_ASSERT(!diag.hasErrors());
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    optimizer::ConstantPropagationPass propPass;
+    propPass.runOnModule(*module);
+
+    std::string irDump = module->toString();
+
+    // The final value must not incorrectly become the original 10.
+    GS_ASSERT(irDump.find("GAME_MOVE    0, 10") == std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, ConstantPropagationRespectsAssignmentExpression) {
+    std::string source =
+        "set x = 10\n"
+        "x = x + 5\n"
+        "player move forward x\n";
+
+    DiagnosticEngine diag(source, "prop_assignment_expr.gs");
+    Lexer lexer(source, "prop_assignment_expr.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    GS_ASSERT(semantic.analyze(*program));
+    GS_ASSERT(!diag.hasErrors());
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    optimizer::ConstantPropagationPass propPass;
+    propPass.runOnModule(*module);
+
+    std::string irDump = module->toString();
+
+    // x becomes 15 after the assignment expression.
+    // It must not be treated as the original constant 10.
+    GS_ASSERT(irDump.find("GAME_MOVE    0, 10") == std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, ConstantPropagationRespectsConditionalReassignment) {
+    std::string source =
+        "set x = 10\n"
+        "when health low:\n"
+        "    x = 20\n"
+        "player move forward x\n";
+
+    DiagnosticEngine diag(source, "prop_conditional_reassignment.gs");
+    Lexer lexer(source, "prop_conditional_reassignment.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    GS_ASSERT(semantic.analyze(*program));
+    GS_ASSERT(!diag.hasErrors());
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    optimizer::ConstantPropagationPass propPass;
+    propPass.runOnModule(*module);
+
+    std::string irDump = module->toString();
+
+    // x may be 10 or 20 depending on the branch.
+    // It must not be propagated as definitely 10.
+    GS_ASSERT(irDump.find("GAME_MOVE    0, 10") == std::string::npos);
+}
+
 GS_TEST(IROptimizerTests, RedundantMovementElimination) {
     std::string source = 
         "player move forward 5\n"
