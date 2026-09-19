@@ -530,6 +530,142 @@ GS_TEST(IROptimizerTests, FunctionCallLowersExpressionArgument) {
     GS_ASSERT(irDump.find("ADD") != std::string::npos);
 }
 
+GS_TEST(IROptimizerTests, FunctionDeclarationCreatesIRFunction) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n";
+
+    Lexer lexer(source, "function_decl.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    const auto& functions = module->getFunctions();
+    GS_ASSERT(functions.size() == 2);
+
+    ir::IRFunction* strike = nullptr;
+    for (const auto& function : functions) {
+        if (function->name == "strike") {
+            strike = function.get();
+            break;
+        }
+    }
+
+    GS_ASSERT(strike != nullptr);
+    GS_ASSERT(strike->params.size() == 1);
+    GS_ASSERT(strike->params[0] == "distance");
+    GS_ASSERT(strike->getEntryBlock() != nullptr);
+    GS_ASSERT(strike->getEntryBlock()->getName() == "strike_entry");
+}
+
+GS_TEST(IROptimizerTests, FunctionBodyLowersIntoFunctionBlock) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n";
+
+    Lexer lexer(source, "function_body.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    ir::IRFunction* strike = nullptr;
+    ir::IRFunction* mainFunction = nullptr;
+
+    for (const auto& function : module->getFunctions()) {
+        if (function->name == "strike") {
+            strike = function.get();
+        } else if (function->name == "main") {
+            mainFunction = function.get();
+        }
+    }
+
+    GS_ASSERT(strike != nullptr);
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(strike->getEntryBlock() != nullptr);
+    GS_ASSERT(mainFunction->getEntryBlock() != nullptr);
+
+    const auto& strikeInstructions =
+        strike->getEntryBlock()->getInstructions();
+
+    const auto& mainInstructions =
+        mainFunction->getEntryBlock()->getInstructions();
+
+    bool strikeHasMove = false;
+    bool mainHasMove = false;
+
+    for (const auto& instruction : strikeInstructions) {
+        if (instruction.op == ir::OpCode::GameMove) {
+            strikeHasMove = true;
+        }
+    }
+
+    for (const auto& instruction : mainInstructions) {
+        if (instruction.op == ir::OpCode::GameMove) {
+            mainHasMove = true;
+        }
+    }
+
+    GS_ASSERT(strikeHasMove);
+    GS_ASSERT(!mainHasMove);
+}
+
+GS_TEST(IROptimizerTests, FunctionDeclarationAndCallLowerTogether) {
+    std::string source =
+        "function strike(distance):\n"
+        "    player move forward distance\n"
+        "call strike(5)\n";
+
+    Lexer lexer(source, "function_decl_call.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    ir::IRFunction* strike = nullptr;
+    ir::IRFunction* mainFunction = nullptr;
+
+    for (const auto& function : module->getFunctions()) {
+        if (function->name == "strike") {
+            strike = function.get();
+        } else if (function->name == "main") {
+            mainFunction = function.get();
+        }
+    }
+
+    GS_ASSERT(strike != nullptr);
+    GS_ASSERT(mainFunction != nullptr);
+    GS_ASSERT(strike->params.size() == 1);
+    GS_ASSERT(strike->params[0] == "distance");
+
+    const auto& instructions =
+        mainFunction->getEntryBlock()->getInstructions();
+
+    bool foundCall = false;
+
+    for (const auto& instruction : instructions) {
+        if (instruction.op == ir::OpCode::Call) {
+            foundCall = true;
+
+            GS_ASSERT(instruction.dest.name == "strike");
+            GS_ASSERT(instruction.args.size() == 1);
+            GS_ASSERT(instruction.args[0].toString() == "5");
+        }
+    }
+
+    GS_ASSERT(foundCall);
+}
+
 GS_TEST(IROptimizerTests, DeadCodeElimination) {
     std::string source =
         "42 + 10\n"
