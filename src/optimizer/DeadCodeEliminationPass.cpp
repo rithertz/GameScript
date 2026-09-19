@@ -63,8 +63,20 @@ bool DeadCodeEliminationPass::runOnModule(ir::IRModule& module) {
         std::unordered_set<std::string> usedRegisters;
         for (const auto& block : func->blocks) {
             for (const auto& inst : block->getInstructions()) {
-                if (inst.src1.isRegister()) usedRegisters.insert(inst.src1.name);
-                if (inst.src2.isRegister()) usedRegisters.insert(inst.src2.name);
+                if (inst.src1.isRegister()) {
+                    usedRegisters.insert(inst.src1.name);
+                }
+
+                if (inst.src2.isRegister()) {
+                    usedRegisters.insert(inst.src2.name);
+                }
+
+                for (const auto& arg : inst.args) {
+                    if (arg.isRegister()) {
+                        usedRegisters.insert(arg.name);
+                    }
+                }
+
                 if (inst.op == ir::OpCode::BranchCond && inst.dest.isRegister()) {
                     usedRegisters.insert(inst.dest.name);
                 }

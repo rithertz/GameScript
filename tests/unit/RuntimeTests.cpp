@@ -121,8 +121,8 @@ GS_TEST(RuntimeTests, OptimizedFunctionCallExecution) {
     auto module = builder.build(*program);
 
     // Run the same optimization pipeline used by the compiler.
-    optimizer::PassManager passManager;
-    passManager.run(*module);
+    auto passManager = optimizer::PassManager::createDefaultPipeline();
+    passManager->run(*module);
 
     GameWorld world(10, 10);
     world.setPlayerPosition(5, 5, Direction::North);
