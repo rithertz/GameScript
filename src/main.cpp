@@ -6,6 +6,7 @@
 static void printUsage(const char* progName) {
     std::cout << "GameScript Natural Language Compiler (v1.0.0)\n";
     std::cout << "Usage: " << progName << " <source.gs> [options]\n\n";
+
     std::cout << "Pipeline Inspection Options:\n";
     std::cout << "  --tokens, -t      Dump lexical tokens\n";
     std::cout << "  --ast, -a         Dump Abstract Syntax Tree (AST)\n";
@@ -15,8 +16,12 @@ static void printUsage(const char* progName) {
     std::cout << "  --llvm, -l        Generate and dump LLVM IR\n";
     std::cout << "  --run, -r         Execute the program inside the 2D Game Runtime\n";
     std::cout << "  --all             Run all compiler phases and show intermediate outputs\n";
+
+    std::cout << "\nCompilation Options:\n";
     std::cout << "  --output, -c <f>  Write generated LLVM IR to specified file\n";
     std::cout << "  --no-opt          Disable IR optimization passes\n";
+
+    std::cout << "\nGeneral Options:\n";
     std::cout << "  --help, -h        Show this help message\n";
     std::cout << "  --version, -v     Show compiler version\n";
 }
@@ -78,6 +83,7 @@ int main(int argc, char* argv[]) {
             }
         } else if (arg == "--no-opt") {
             options.optimize = false;
+            hasExplicitPhaseFlag = true;
         } else if (arg[0] == '-') {
             std::cerr << "Unknown option: " << arg << "\n";
             printUsage(argv[0]);
