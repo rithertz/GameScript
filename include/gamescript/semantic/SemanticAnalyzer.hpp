@@ -29,6 +29,7 @@ public:
     // Visitor methods for statement nodes.
     void visit(Program& node) override;
     void visit(VarDeclStmt& node) override;
+    void visit(AssignmentStmt& node) override;
     void visit(MoveStmt& node) override;
     void visit(TurnStmt& node) override;
     void visit(ActionStmt& node) override;

@@ -89,6 +89,49 @@ void SemanticAnalyzer::visit(VarDeclStmt& node) {
     }
 }
 
+void SemanticAnalyzer::visit(AssignmentStmt& node) {
+    auto symbol = symbolTable_.resolve(node.getVarName());
+
+    if (!symbol.has_value()) {
+        std::string msg =
+            "Undefined variable '" + node.getVarName() + "'.";
+
+        if (diagnostics_) {
+            diagnostics_->reportSemanticError(node.getSpan(), msg);
+        }
+
+        hasInternalErrors_ = true;
+        return;
+    }
+
+    DataType valueType = DataType::Unknown;
+
+    if (node.getValue()) {
+        node.getValue()->accept(*this);
+        valueType = lastEvaluatedType_;
+    }
+
+    if (valueType != DataType::Unknown &&
+        symbol->type != DataType::Unknown &&
+        valueType != symbol->type) {
+
+        std::string msg =
+            "Cannot assign value of type '" +
+            dataTypeToString(valueType) +
+            "' to variable '" +
+            node.getVarName() +
+            "' of type '" +
+            dataTypeToString(symbol->type) +
+            "'.";
+
+        if (diagnostics_) {
+            diagnostics_->reportSemanticError(node.getSpan(), msg);
+        }
+
+        hasInternalErrors_ = true;
+    }
+}
+
 void SemanticAnalyzer::visit(MoveStmt& node) {
     if (node.getDistance()) {
         node.getDistance()->accept(*this);

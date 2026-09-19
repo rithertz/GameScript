@@ -13,6 +13,14 @@ const Token& Parser::peek() const {
     return tokens_[current_];
 }
 
+const Token& Parser::peek(size_t offset) const {
+    size_t index = current_ + offset;
+    if (index >= tokens_.size()) {
+        return tokens_.back();
+    }
+    return tokens_[index];
+}
+
 const Token& Parser::previous() const {
     if (current_ == 0) return tokens_[0];
     return tokens_[current_ - 1];
@@ -162,6 +170,9 @@ StmtPtr Parser::parseStatement() {
         case TokenType::When:
             return parseWhenStatement();
         default:
+            if (peek().type == TokenType::Identifier && peek(1).type == TokenType::Equal) {
+                return parseAssignment();
+            }
             return parseExprStatement();
     }
 }
@@ -368,6 +379,25 @@ StmtPtr Parser::parseWhenStatement() {
 
     SourceSpan span(whenTok.span.start, previous().span.end);
     return std::make_unique<WhenStmt>(std::move(condition), std::move(body), span);
+}
+
+StmtPtr Parser::parseAssignment() {
+    Token nameTok = advance();
+
+    consume(TokenType::Equal, "Expected '=' after variable name.");
+
+    ExprPtr value = parseExpression();
+
+    SourceSpan span(
+        nameTok.span.start,
+        value ? value->getSpan().end : nameTok.span.end
+    );
+
+    return std::make_unique<AssignmentStmt>(
+        nameTok.lexeme,
+        std::move(value),
+        span
+    );
 }
 
 StmtPtr Parser::parseExprStatement() {

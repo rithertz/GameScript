@@ -12,6 +12,7 @@ namespace gamescript {
 // Forward declarations of AST nodes
 class Program;
 class VarDeclStmt;
+class AssignmentStmt;
 class MoveStmt;
 class TurnStmt;
 class ActionStmt;
@@ -39,6 +40,7 @@ public:
     // Visitor methods for statement nodes.
     virtual void visit(Program& node) = 0;
     virtual void visit(VarDeclStmt& node) = 0;
+    virtual void visit(AssignmentStmt& node) = 0;
     virtual void visit(MoveStmt& node) = 0;
     virtual void visit(TurnStmt& node) = 0;
     virtual void visit(ActionStmt& node) = 0;

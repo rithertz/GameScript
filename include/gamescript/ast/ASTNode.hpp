@@ -21,6 +21,7 @@ enum class ASTNodeType {
     Program,
     // Statements
     VarDeclStmt,
+    AssignmentStmt,
     MoveStmt,
     TurnStmt,
     ActionStmt,

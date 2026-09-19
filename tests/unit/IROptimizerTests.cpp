@@ -694,3 +694,60 @@ GS_TEST(IROptimizerTests, DeadCodeElimination) {
     GS_ASSERT(after.find("GAME_MOVE") != std::string::npos);
 }
 
+GS_TEST(IROptimizerTests, AssignmentGeneratesStore) {
+    std::string source =
+        "set x = 10\n"
+        "x = 20\n";
+
+    DiagnosticEngine diag(source, "assignment_ir.gs");
+    Lexer lexer(source, "assignment_ir.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    GS_ASSERT(semantic.analyze(*program));
+    GS_ASSERT(!diag.hasErrors());
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string ir = module->toString();
+
+    GS_ASSERT(ir.find("ALLOCA       x") != std::string::npos);
+    GS_ASSERT(ir.find("STORE        x, 10") != std::string::npos);
+    GS_ASSERT(ir.find("STORE        x, 20") != std::string::npos);
+}
+
+GS_TEST(IROptimizerTests, AssignmentExpressionGeneratesLoadAndStore) {
+    std::string source =
+        "set x = 10\n"
+        "x = x + 5\n";
+
+    DiagnosticEngine diag(source, "assignment_expr_ir.gs");
+    Lexer lexer(source, "assignment_expr_ir.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    GS_ASSERT(semantic.analyze(*program));
+    GS_ASSERT(!diag.hasErrors());
+
+    ir::IRBuilder builder;
+    auto module = builder.build(*program);
+
+    GS_ASSERT(module != nullptr);
+
+    std::string ir = module->toString();
+
+    GS_ASSERT(ir.find("ALLOCA       x") != std::string::npos);
+    GS_ASSERT(ir.find("STORE        x, 10") != std::string::npos);
+    GS_ASSERT(ir.find("LOAD") != std::string::npos);
+    GS_ASSERT(ir.find("ADD") != std::string::npos);
+    GS_ASSERT(ir.find("STORE        x") != std::string::npos);
+}

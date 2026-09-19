@@ -73,6 +73,21 @@ void IRBuilder::visit(VarDeclStmt& node) {
     emit(Instruction(OpCode::Store, Operand::makeVar(node.getVarName()), valOp));
 }
 
+void IRBuilder::visit(AssignmentStmt& node) {
+    Operand valueOp = Operand::makeInt(0);
+
+    if (node.getValue()) {
+        node.getValue()->accept(*this);
+        valueOp = lastOperand_;
+    }
+
+    emit(Instruction(
+        OpCode::Store,
+        Operand::makeVar(node.getVarName()),
+        valueOp
+    ));
+}
+
 void IRBuilder::visit(MoveStmt& node) {
     Operand distOp = Operand::makeInt(1);
     if (node.getDistance()) {

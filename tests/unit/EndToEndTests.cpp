@@ -95,6 +95,50 @@ GS_TEST(EndToEndTests, OptimizationPipelineE2E) {
     GS_ASSERT(result.optIRDump.find("30") != std::string::npos);
 }
 
+GS_TEST(EndToEndTests, VariableReassignmentPipeline) {
+    std::string source =
+        "set x = 2\n"
+        "x = x + 3\n"
+        "player move forward x\n";
+
+    driver::CompilerDriver driver;
+    driver::CompilerOptions opts;
+    opts.checkSemantic = true;
+    opts.dumpIR = true;
+
+    auto result = driver.compileSource(source, "assignment_e2e.gs", opts);
+
+    GS_ASSERT_EQ(result.exitCode, 0);
+    GS_ASSERT(result.success);
+
+    // Initial declaration
+    GS_ASSERT(
+        result.irDump.find("ALLOCA       x") != std::string::npos
+    );
+
+    GS_ASSERT(
+        result.irDump.find("STORE        x, 2") != std::string::npos
+    );
+
+    // x = x + 3
+    GS_ASSERT(
+        result.irDump.find("LOAD") != std::string::npos
+    );
+
+    GS_ASSERT(
+        result.irDump.find("ADD") != std::string::npos
+    );
+
+    GS_ASSERT(
+        result.irDump.find("STORE        x") != std::string::npos
+    );
+
+    // Reassigned value is used by movement
+    GS_ASSERT(
+        result.irDump.find("GAME_MOVE") != std::string::npos
+    );
+}
+
 GS_TEST(EndToEndTests, LoopAndFunctionPipeline) {
     std::string source = 
         "function strike:\n"

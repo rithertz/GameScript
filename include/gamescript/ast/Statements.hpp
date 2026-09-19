@@ -93,6 +93,29 @@ private:
     ExprPtr initializer_;
 };
 
+// Represents assignment of an expression to an existing variable.
+class AssignmentStmt : public Stmt {
+public:
+    AssignmentStmt(std::string varName, ExprPtr value, SourceSpan span)
+        : Stmt(ASTNodeType::AssignmentStmt, span),
+          varName_(std::move(varName)),
+          value_(std::move(value)) {}
+
+    const std::string& getVarName() const { return varName_; }
+    Expr* getValue() const { return value_.get(); }
+    ExprPtr& getValuePtr() { return value_; }
+
+    // Visitor dispatch for assignment statements.
+    void accept(ASTVisitor& visitor) override;
+
+    // Returns a human-readable representation of the statement.
+    std::string toString() const override;
+
+private:
+    std::string varName_;
+    ExprPtr value_;
+};
+
 // Represents a movement statement with a direction and distance.
 class MoveStmt : public Stmt {
 public:

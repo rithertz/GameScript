@@ -192,6 +192,18 @@ std::string VarDeclStmt::toString() const
            (initializer_ ? initializer_->toString() : "null");
 }
 
+void AssignmentStmt::accept(ASTVisitor& visitor)
+{
+    visitor.visit(*this);
+}
+
+std::string AssignmentStmt::toString() const
+{
+    return varName_ +
+           " = " +
+           (value_ ? value_->toString() : "null");
+}
+
 void MoveStmt::accept(ASTVisitor& visitor)
 {
     visitor.visit(*this);
@@ -389,6 +401,28 @@ void ASTPrinter::visit(VarDeclStmt& node)
              << "`-- Value: ";
 
         node.getInitializer()->accept(*this);
+
+        oss_ << "\n";
+
+        dedent();
+    }
+}
+
+void ASTPrinter::visit(AssignmentStmt& node)
+{
+    oss_ << getIndentString()
+         << "|-- Assignment: "
+         << node.getVarName()
+         << "\n";
+
+    if (node.getValue())
+    {
+        indent();
+
+        oss_ << getIndentString()
+             << "`-- Value: ";
+
+        node.getValue()->accept(*this);
 
         oss_ << "\n";
 

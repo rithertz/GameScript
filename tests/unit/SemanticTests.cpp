@@ -628,3 +628,59 @@ GS_TEST(SemanticTests, RejectVariableAndFunctionWithKeywordSameName) {
     GS_ASSERT(!ok);
     GS_ASSERT(diag.hasErrors());
 }
+
+GS_TEST(SemanticTests, AcceptVariableAssignment) {
+    std::string source =
+        "set x = 10\n"
+        "x = x + 5\n";
+
+    DiagnosticEngine diag(source, "assignment.gs");
+    Lexer lexer(source, "assignment.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(ok);
+    GS_ASSERT(!diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectAssignmentToUndeclaredVariable) {
+    std::string source =
+        "x = 10\n";
+
+    DiagnosticEngine diag(source, "assignment_undeclared.gs");
+    Lexer lexer(source, "assignment_undeclared.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}
+
+GS_TEST(SemanticTests, RejectAssignmentTypeMismatch) {
+    std::string source =
+        "set x = 10\n"
+        "x = true\n";
+
+    DiagnosticEngine diag(source, "assignment_type_mismatch.gs");
+    Lexer lexer(source, "assignment_type_mismatch.gs", &diag);
+    Parser parser(lexer.tokenize(), &diag);
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+
+    SemanticAnalyzer semantic(&diag);
+    bool ok = semantic.analyze(*program);
+
+    GS_ASSERT(!ok);
+    GS_ASSERT(diag.hasErrors());
+}

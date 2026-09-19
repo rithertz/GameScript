@@ -33,6 +33,7 @@ public:
 private:
     // Token navigation helpers
     const Token& peek() const;
+    const Token& peek(size_t offset) const;
     const Token& previous() const;
     bool isAtEnd() const;
     Token advance();
@@ -50,6 +51,7 @@ private:
     // Statement parsers
     StmtPtr parseStatement();
     StmtPtr parseVarDecl();
+    StmtPtr parseAssignment();
     StmtPtr parsePlayerStatement();
     StmtPtr parseIfStatement();
     StmtPtr parseRepeatStatement();

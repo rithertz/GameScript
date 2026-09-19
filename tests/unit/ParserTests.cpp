@@ -142,6 +142,84 @@ GS_TEST(ParserTests, ExpressionPrecedence) {
     GS_ASSERT_EQ(rightExpr->getOp(), BinaryOp::Multiply);
 }
 
+GS_TEST(ParserTests, AssignmentStatement) {
+    std::string source =
+        "set x = 10\n"
+        "x = 20\n";
+
+    Lexer lexer(source, "assignment.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 2);
+
+    auto* decl = dynamic_cast<VarDeclStmt*>(program->getStatements()[0].get());
+    GS_ASSERT(decl != nullptr);
+    GS_ASSERT_EQ(decl->getVarName(), "x");
+
+    auto* assignment = dynamic_cast<AssignmentStmt*>(
+        program->getStatements()[1].get()
+    );
+    GS_ASSERT(assignment != nullptr);
+    GS_ASSERT_EQ(assignment->getVarName(), "x");
+
+    auto* value = dynamic_cast<IntegerLiteralExpr*>(assignment->getValue());
+    GS_ASSERT(value != nullptr);
+    GS_ASSERT_EQ(value->getValue(), 20);
+}
+
+GS_TEST(ParserTests, AssignmentExpression) {
+    std::string source =
+        "set x = 10\n"
+        "x = x + 5\n";
+
+    Lexer lexer(source, "assignment_expr.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 2);
+
+    auto* assignment = dynamic_cast<AssignmentStmt*>(
+        program->getStatements()[1].get()
+    );
+    GS_ASSERT(assignment != nullptr);
+    GS_ASSERT_EQ(assignment->getVarName(), "x");
+
+    auto* addExpr = dynamic_cast<BinaryExpr*>(assignment->getValue());
+    GS_ASSERT(addExpr != nullptr);
+    GS_ASSERT_EQ(addExpr->getOp(), BinaryOp::Add);
+
+    auto* left = dynamic_cast<IdentifierExpr*>(addExpr->getLeft());
+    GS_ASSERT(left != nullptr);
+    GS_ASSERT_EQ(left->getName(), "x");
+
+    auto* right = dynamic_cast<IntegerLiteralExpr*>(addExpr->getRight());
+    GS_ASSERT(right != nullptr);
+    GS_ASSERT_EQ(right->getValue(), 5);
+}
+
+GS_TEST(ParserTests, ExpressionStatementStillParsesNormally) {
+    std::string source = "x + 5\n";
+
+    Lexer lexer(source, "expr_stmt.gs");
+    Parser parser(lexer.tokenize());
+    auto program = parser.parseProgram();
+
+    GS_ASSERT(program != nullptr);
+    GS_ASSERT_EQ(program->getStatements().size(), 1);
+
+    auto* exprStmt = dynamic_cast<ExprStmt*>(
+        program->getStatements()[0].get()
+    );
+    GS_ASSERT(exprStmt != nullptr);
+
+    auto* addExpr = dynamic_cast<BinaryExpr*>(exprStmt->getExpr());
+    GS_ASSERT(addExpr != nullptr);
+    GS_ASSERT_EQ(addExpr->getOp(), BinaryOp::Add);
+}
+
 GS_TEST(ParserTests, BooleanLogicAndNot) {
     std::string source =
         "if not enemy nearby and health low:\n"
