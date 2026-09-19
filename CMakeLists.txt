@@ -15,11 +15,6 @@ else()
     add_compile_options(-Wall -Wextra -Wpedantic)
 endif()
 
-# Include directories
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
 # Core Compiler Library Sources
 set(GAMESCRIPT_CORE_SOURCES
     src/common/DiagnosticEngine.cpp
