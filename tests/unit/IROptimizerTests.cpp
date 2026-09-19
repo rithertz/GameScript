@@ -210,6 +210,18 @@ GS_TEST(IROptimizerTests, BasicBlockRejectsDuplicateCFGEdges) {
     GS_ASSERT(block.getSuccessors()[0] == "succ");
 }
 
+GS_TEST(IROptimizerTests, BasicBlockDumpShowsCFGEdges) {
+    ir::BasicBlock block("test_block");
+
+    block.addPredecessor("previous");
+    block.addSuccessor("next");
+
+    std::string dump = block.toString();
+
+    GS_ASSERT(dump.find("Predecessors: [previous]") != std::string::npos);
+    GS_ASSERT(dump.find("Successors: [next]") != std::string::npos);
+}
+
 GS_TEST(IROptimizerTests, RepeatLoopIRGeneration) {
     std::string source =
         "repeat 3:\n"
